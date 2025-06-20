@@ -1,35 +1,53 @@
+use std::process::{ Command };
 use clap::Parser;
 use anyhow::{ Context, Result };
-use std::process::{ Command };
+use dirs::cache_dir;
 
+mod set_json;
+mod handle_ticket;
 mod read_env;
+mod config;
+use set_json::set_json;
+use handle_ticket::handle_ticket;
 
 #[derive(Parser)]
-// enum Cli {
-//     Commit {
-
-//     },
-//     SetEnv {
-
-//     }
-// }
 struct Cli {
     message: String,
-    #[arg(long, short, default_value(""))]
+    #[arg( default_value(""))]
     ticket: String, 
+    #[arg(long="set-env", short, action=clap::ArgAction::SetTrue, default_value_t=false)]
+    set_config: bool,
     #[arg(long, short, action)]
     debug: bool,
 }
 
+// Supported cases
+// CASE 1: gcmt "message" "ticket"
+// CASE 2: gcmt -s "message" "ticket"
+// CASE 3a || b: gcmt "message" + `export RGCMT_TICKET=1111` || -s "ticket"
 fn main() -> Result<()> {
     let args = Cli::parse();
-    let mut ticket = args.ticket;
-    if ticket.eq("") { ticket = read_env::read_env(args.debug)? }
-    
+    let env_var_key = format!("RGCMT_TICKET");
+    // Define config.json_path
+    let cache_dir_path = cache_dir()
+        .with_context(|| format!("dirs::cache_dir() panicked"))?;
+    let config_path = cache_dir_path.join(r"r-gcmt/config.json");
+
+    if args.debug { println!("set_env: {}, json_path: {}", args.set_config, config_path.display()) };
+    if args.set_config {
+        set_json(&args.ticket, &config_path, &env_var_key, args.debug)
+            .with_context(|| format!("set_json failed"))?;
+    }
+
+    let ticket = if !args.ticket.is_empty() {
+        args.ticket
+    } else {
+        handle_ticket(&config_path, &env_var_key, args.debug)?
+    };
 
     let commit_message = format!("{}: {}", ticket, args.message);
     if args.debug {
-        println!("Commit Message, {}", commit_message);
+        println!("Commit Message: '{}'", commit_message);
         println!("__________________");
     }
 
@@ -38,8 +56,8 @@ fn main() -> Result<()> {
         .output()
         .with_context(|| format!("git commit panicked"))?;
 
-    let git_message = String::from_utf8_lossy(&command.stdout).into_owned();
-    println!("Git commit: {}", git_message);
+    let commit_result = String::from_utf8_lossy(&command.stdout).into_owned();
+    println!("Git commit: {}", commit_result);
     
     Ok(())
 }
