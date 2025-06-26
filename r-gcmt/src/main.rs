@@ -53,11 +53,19 @@ fn main() -> Result<()> {
 
     let command = Command::new("git")
         .args(["commit", "-m", &commit_message])
-        .output()
-        .with_context(|| format!("git commit panicked"))?;
+        .output();
 
-    let commit_result = String::from_utf8_lossy(&command.stdout).into_owned();
-    println!("Git commit: {}", commit_result);
+    match command {
+        Ok(v) => {
+            let commit_result = if !v.stdout.is_empty() {
+                String::from_utf8_lossy(&v.stdout).into_owned()
+            } else if !v.stderr.is_empty() {
+                String::from_utf8_lossy(&v.stderr).into_owned()
+            } else { String::from("stdout and stderr empty") };
+            println!("Git commit: {}", commit_result);
+        },
+        Err(e) => panic!("git commit panicked with error: {}", e)
+    }
     
     Ok(())
 }
