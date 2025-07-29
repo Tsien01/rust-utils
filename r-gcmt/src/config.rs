@@ -4,4 +4,5 @@ use serde::{ Deserialize, Serialize };
 pub struct Config {
     #[serde(rename="ticketNumber")]
     pub ticket_number: String,
+    pub model: String,
 }
