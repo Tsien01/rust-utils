@@ -48,7 +48,7 @@ pub fn write_json (key: &str, value: &str, json_path: &PathBuf, debug: bool) -> 
     Ok(())
 }
 
-pub fn set_json (ticket_arg: &str, json_path: &PathBuf, env_var_key:&str, debug: bool) -> Result<()> {
+pub fn set_ticket (ticket_arg: &str, json_path: &PathBuf, env_var_key:&str, debug: bool) -> Result<()> {
     if debug { println!("set_json") };
     // if ticket_arg is "", attempt to read from env
     let ticket: String = if !ticket_arg.is_empty() {
